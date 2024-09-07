@@ -1,0 +1,170 @@
+
+import PlaygroundSupport
+import SpriteKit
+import UIKit
+
+// Startbildschirm
+class StartScreen: UIViewController {
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        
+        let titleLabel = UILabel(frame: CGRect(x: 0, y: 200, width: 600, height: 50))
+        titleLabel.text = "cocolorares"
+        titleLabel.textAlignment = .center
+        titleLabel.font = UIFont.systemFont(ofSize: 40)
+        view.addSubview(titleLabel)
+        
+        let startButton = UIButton(frame: CGRect(x: 200, y: 300, width: 200, height: 50))
+        startButton.setTitle("Start", for: .normal)
+        startButton.setTitleColor(.blue, for: .normal)
+        startButton.addTarget(self, action: #selector(startGame), for: .touchUpInside)
+        view.addSubview(startButton)
+    }
+    
+    @objc func startGame() {
+        let level1Scene = Level1(size: CGSize(width: 600, height: 800))
+        let skView = SKView(frame: CGRect(x: 0, y: 0, width: 600, height: 800))
+        skView.presentScene(level1Scene)
+        
+        PlaygroundPage.current.liveView = skView
+    }
+}
+
+// Level 1: Joghurtbecher
+class Level1: SKScene, SKPhysicsContactDelegate {
+    var joghurtBecher: SKSpriteNode!
+    var waschbecken: SKSpriteNode!
+    var redColor: SKSpriteNode!
+    var bababumbum: SKSpriteNode!
+    var simsalabim: SKSpriteNode!
+    var circleObject: SKSpriteNode!
+    var ramp: SKSpriteNode! // Ramp for the circle object
+    
+    var selectedObject: SKSpriteNode! // Object being controlled
+    var lastTapTime: TimeInterval = 0 // To track double taps
+    
+    override func didMove(to view: SKView) {
+        backgroundColor = .white
+        physicsWorld.contactDelegate = self
+        
+        // Waschbecken
+        waschbecken = SKSpriteNode(color: .gray, size: CGSize(width: 200, height: 100))
+        waschbecken.position = CGPoint(x: frame.midX, y: frame.midY)
+        waschbecken.physicsBody = SKPhysicsBody(rectangleOf: waschbecken.size)
+        waschbecken.physicsBody?.isDynamic = false
+        waschbecken.physicsBody?.categoryBitMask = 1
+        addChild(waschbecken)
+        
+        // Rote Farbe (redColor) rotated by 30 degrees
+        redColor = SKSpriteNode(color: .red, size: CGSize(width: 480, height: 100))
+        redColor.position = CGPoint(x: frame.midX, y: frame.midY - 215)
+        redColor.zRotation = CGFloat(30 * CGFloat.pi / 180) // Rotate by 30 degrees
+        redColor.physicsBody = SKPhysicsBody(rectangleOf: redColor.size)
+        redColor.physicsBody?.isDynamic = false
+        redColor.physicsBody?.categoryBitMask = 3
+        addChild(redColor)
+        
+        // Bababumbum
+        bababumbum = SKSpriteNode(color: .systemPink, size: CGSize(width: 100, height: 100))
+        bababumbum.position = CGPoint(x: frame.midX, y: frame.midY + 1)
+        bababumbum.physicsBody = SKPhysicsBody(rectangleOf: bababumbum.size)
+        bababumbum.physicsBody?.isDynamic = true
+        bababumbum.physicsBody?.categoryBitMask = 4
+        bababumbum.physicsBody?.collisionBitMask = 2
+        bababumbum.physicsBody?.contactTestBitMask = 2
+        addChild(bababumbum)
+        
+        // Joghurtbecher
+        joghurtBecher = SKSpriteNode(color: .yellow, size: CGSize(width: 50, height: 100))
+        joghurtBecher.position = CGPoint(x: frame.midX, y: frame.midY - 200)
+        joghurtBecher.physicsBody = SKPhysicsBody(rectangleOf: joghurtBecher.size)
+        joghurtBecher.physicsBody?.isDynamic = true
+        joghurtBecher.physicsBody?.categoryBitMask = 2
+        joghurtBecher.physicsBody?.collisionBitMask = 4
+        joghurtBecher.physicsBody?.contactTestBitMask = 4
+        addChild(joghurtBecher)
+        
+        // Blue object (Simsalabim)
+        simsalabim = SKSpriteNode(color: .blue, size: CGSize(width: 75, height: 100))
+        simsalabim.position = CGPoint(x: frame.midX, y: frame.midY + 250)
+        simsalabim.physicsBody = SKPhysicsBody(rectangleOf: simsalabim.size)
+        simsalabim.physicsBody?.categoryBitMask = 4
+        addChild(simsalabim)
+        
+        // New physics circle
+        circleObject = SKSpriteNode(color: .green, size: CGSize(width: 100, height: 100))
+        circleObject.position = CGPoint(x: frame.midX + 150, y: frame.midY + 150)
+        circleObject.physicsBody = SKPhysicsBody(circleOfRadius: circleObject.size.width / 2)
+        circleObject.physicsBody?.isDynamic = true
+        circleObject.physicsBody?.categoryBitMask = 5
+        addChild(circleObject)
+        
+        // Create the ramp
+        ramp = SKSpriteNode(color: .brown, size: CGSize(width: 200, height: 20))
+        ramp.position = CGPoint(x: frame.midX - 40, y: frame.midY - 170) // Positioned near the center
+        ramp.zRotation = CGFloat(-20 * CGFloat.pi / 180) // Tilted at -20 degrees to form a ramp
+        ramp.physicsBody = SKPhysicsBody(rectangleOf: ramp.size)
+        ramp.physicsBody?.isDynamic = false // Ramp should be static
+        addChild(ramp)
+        
+        // Initial selected object is bababumbum
+        selectedObject = bababumbum
+        
+        let border = SKPhysicsBody(edgeLoopFrom: self.frame)
+        self.physicsBody = border
+    }
+    
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard let touch = touches.first else { return }
+        let touchLocation = touch.location(in: self)
+        selectedObject.position = touchLocation
+        waschbecken.position = touchLocation
+    }
+    
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard let touch = touches.first else { return }
+        let currentTime = CACurrentMediaTime()
+        
+        // Double-tap detection
+        if currentTime - lastTapTime < 0.3 {
+            if selectedObject == bababumbum {
+                selectedObject = joghurtBecher
+            } else if selectedObject == joghurtBecher {
+                selectedObject = simsalabim
+            } else {
+                selectedObject = bababumbum
+            }
+            print("Switched control to: \(selectedObject.name ?? "Objekt")")
+        }
+        
+        lastTapTime = currentTime
+    }
+    
+    func didBegin(_ contact: SKPhysicsContact) {
+        let contactMask = contact.bodyA.categoryBitMask | contact.bodyB.categoryBitMask
+        
+        if contactMask == (2 | 4) { // Joghurtbecher and Bababumbum collision
+            print("Joghurtbecher destroyed by Bababumbum!")
+            joghurtBecher.removeFromParent() // Destroy Joghurtbecher
+        } else if contactMask == 5 { // Joghurtbecher and Waschbecken
+            print("Joghurtbecher im Waschbecken!")
+            joghurtBecher.removeFromParent()
+            redColor.removeFromParent()
+            waschbecken.removeFromParent()
+            let nextLevelScene = NextLevel(size: CGSize(width: 600, height: 800))
+            view?.presentScene(nextLevelScene)
+        } else if contactMask == 6 { // Joghurtbecher and redColor
+            print("Joghurtbecher in der roten Farbe!")
+        }
+    }
+}
+
+// Nächstes Level
+class NextLevel: SKScene {
+    override func didMove(to view: SKView) {
+        backgroundColor = .green
+    }
+}
+
+let startScreen = StartScreen()
+PlaygroundPage.current.liveView = startScreen
