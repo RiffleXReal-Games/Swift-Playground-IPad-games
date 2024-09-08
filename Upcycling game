@@ -1,0 +1,95 @@
+
+import PlaygroundSupport
+import SpriteKit
+import UIKit
+
+
+// Startbildschirm
+class StartScreen: UIViewController {
+  override func viewDidLoad() {
+    super.viewDidLoad()
+    
+      print("Anleitung: um das Spiel zu starten drücke auf Start. Das Ziel ist es das gelbe Joghurtglas in das graue Waschbecken und dann 3 Sekunden in die rote Farbe zu ziehen. Dann hast du erfolgreich einen altes Joghurtglas zu einem neuen coolen Glas Upgecycelt. Viel Spass beim Spielen!")
+  
+      
+    let titleLabel = UILabel(frame: CGRect(x: 0, y: 200, width: 600, height: 50))
+    titleLabel.text = "Upcycling Game"
+    titleLabel.textAlignment = .center
+    titleLabel.font = UIFont.systemFont(ofSize: 40)
+    view.addSubview(titleLabel)
+    
+    let startButton = UIButton(frame: CGRect(x: 200, y: 300, width: 200, height: 50))
+    startButton.setTitle("Start", for: .normal)
+    startButton.setTitleColor(.blue, for: .normal)
+    startButton.addTarget(self, action: #selector(startGame), for: .touchUpInside)
+    view.addSubview(startButton)
+  }
+  
+  @objc func startGame() {
+    let level1Scene = Level1(size: CGSize(width: 600, height: 800))
+    let skView = SKView(frame: CGRect(x: 0, y: 0, width: 600, height: 800))
+    skView.presentScene(level1Scene)
+    
+    PlaygroundPage.current.liveView = skView
+  }
+}
+
+// Level 1: Joghurtbecher
+class Level1: SKScene {
+  var joghurtBecher: SKSpriteNode!
+  var waschbecken: SKSpriteNode!
+  var redColor: SKSpriteNode!
+  var reachedWaschbecken: Bool = false
+  var reachedRedColor: Bool = false
+  var startTimeInWashbecken: CFTimeInterval? = nil
+
+  override func didMove(to view: SKView) {
+      backgroundColor = .white
+    
+    waschbecken = SKSpriteNode(color: .gray, size: CGSize(width: 200, height: 100))
+    waschbecken.position = CGPoint(x: frame.midX, y: frame.midY)
+    addChild(waschbecken)
+    
+    redColor = SKSpriteNode(color: .red, size: CGSize(width: 100, height: 100))
+    redColor.position = CGPoint(x: frame.midX, y: frame.midY - 200)
+    addChild(redColor)
+    
+    joghurtBecher = SKSpriteNode(color: .yellow, size: CGSize(width: 50, height: 100))
+    joghurtBecher.position = CGPoint(x: frame.midX, y: frame.midY + 200)
+    addChild(joghurtBecher)
+  }
+  
+  override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+    guard let touch = touches.first else { return }
+    let touchLocation = touch.location(in: self)
+    joghurtBecher.position = touchLocation
+    
+    if !reachedWaschbecken && waschbecken.frame.contains(touchLocation) {
+      reachedWaschbecken = true
+      startTimeInWashbecken = CACurrentMediaTime()
+      print("                                                Joghurtglas im Waschbecken!")
+    } else if reachedWaschbecken && !reachedRedColor && redColor.frame.contains(touchLocation) {
+      // Only proceed if spent at least 3 seconds in the washbasi
+      if let startTime = startTimeInWashbecken, CACurrentMediaTime() - startTime >= 3.0 {
+        reachedRedColor = true
+        print("                                                Joghurtglas in der roten Farbe!")
+      }
+    }
+    
+    if reachedWaschbecken && reachedRedColor {
+      print("                                                        Beide Ziele erreicht!")
+      let nextLevelScene = NextLevel(size: CGSize(width: 600, height: 800))
+      view?.presentScene(nextLevelScene)
+    }
+  }
+}
+
+// Nächstes Level
+class NextLevel: SKScene {
+  override func didMove(to view: SKView) {
+    backgroundColor = .green
+  }
+}
+
+let startScreen = StartScreen()
+PlaygroundPage.current.liveView = startScreen
