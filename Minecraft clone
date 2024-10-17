@@ -1,0 +1,150 @@
+
+import PlaygroundSupport
+import SpriteKit
+import UIKit
+
+// Startscreen
+class StartScreen: UIViewController {
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        
+        let titleLabel = UILabel(frame: CGRect(x: 0, y: 200, width: 600, height: 50))
+        titleLabel.text = "cocolorares"
+        titleLabel.textAlignment = .center
+        titleLabel.font = UIFont.systemFont(ofSize: 40)
+        view.addSubview(titleLabel)
+        
+        let startButton = UIButton(frame: CGRect(x: 200, y: 300, width: 200, height: 50))
+        startButton.setTitle("Start", for: .normal)
+        startButton.setTitleColor(.blue, for: .normal)
+        startButton.addTarget(self, action: #selector(startGame), for: .touchUpInside)
+        view.addSubview(startButton)
+    }
+
+    @objc func startGame() {
+        let level1Scene = Level1(size: CGSize(width: 600, height: 800))
+        let skView = SKView(frame: CGRect(x: 0, y: 0, width: 600, height: 800))
+        skView.presentScene(level1Scene)
+        PlaygroundPage.current.liveView = skView
+    }
+}
+
+// Level 1: Joghurtbecher with Jump and Run Mechanics
+class Level1: SKScene, SKPhysicsContactDelegate {
+    var joghurtBecher: SKSpriteNode!
+    var isJumping = false
+    let jumpHeight: CGFloat = 150
+    let playerSpeed: CGFloat = 5
+    var ground: SKSpriteNode!
+    var spawnedObjects: [SKSpriteNode] = [] // Array to track spawned objects
+    
+    override func didMove(to view: SKView) {
+        backgroundColor = .white
+        physicsWorld.contactDelegate = self
+        
+        // Ground
+        ground = SKSpriteNode(color: .brown, size: CGSize(width: frame.width, height: 20))
+        ground.position = CGPoint(x: frame.midX, y: frame.minY + 50)
+        ground.physicsBody = SKPhysicsBody(rectangleOf: ground.size)
+        ground.physicsBody?.isDynamic = false
+        addChild(ground)
+        
+        // Joghurtbecher (Player)
+        joghurtBecher = SKSpriteNode(color: .yellow, size: CGSize(width: 50, height: 100))
+        joghurtBecher.position = CGPoint(x: frame.midX, y: frame.midY - 200)
+        joghurtBecher.physicsBody = SKPhysicsBody(rectangleOf: joghurtBecher.size)
+        joghurtBecher.physicsBody?.isDynamic = true
+        joghurtBecher.physicsBody?.categoryBitMask = 2
+        joghurtBecher.physicsBody?.collisionBitMask = 4
+        joghurtBecher.physicsBody?.contactTestBitMask = 4
+        addChild(joghurtBecher)
+        
+        let border = SKPhysicsBody(edgeLoopFrom: self.frame)
+        self.physicsBody = border
+        
+        // Add swipe gestures for movement
+        let swipeLeft = UISwipeGestureRecognizer(target: self, action: #selector(moveLeft))
+        swipeLeft.direction = .left
+        view.addGestureRecognizer(swipeLeft)
+        
+        let swipeRight = UISwipeGestureRecognizer(target: self, action: #selector(moveRight))
+        swipeRight.direction = .right
+        view.addGestureRecognizer(swipeRight)
+        
+        let swipeUp = UISwipeGestureRecognizer(target: self, action: #selector(jump))
+        swipeUp.direction = .up
+        view.addGestureRecognizer(swipeUp)
+        
+        // Add double-tap gesture for spawning objects
+        let doubleTap = UITapGestureRecognizer(target: self, action: #selector(handleDoubleTap))
+        doubleTap.numberOfTapsRequired = 2
+        view.addGestureRecognizer(doubleTap)
+        
+        // Add triple-tap gesture for removing objects
+        let tripleTap = UITapGestureRecognizer(target: self, action: #selector(handleTripleTap))
+        tripleTap.numberOfTapsRequired = 3
+        view.addGestureRecognizer(tripleTap)
+    }
+    
+    @objc func moveLeft() {
+        joghurtBecher.position.x -= playerSpeed * 7
+    }
+    
+    @objc func moveRight() {
+        joghurtBecher.position.x += playerSpeed * 7
+    }
+    
+    @objc func jump() {
+        guard !isJumping else { return }
+        
+        isJumping = true
+        joghurtBecher.physicsBody?.applyImpulse(CGVector(dx: 0, dy: jumpHeight))
+        
+        // Set isJumping to false after jump
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.isJumping = false
+        }
+    }
+    
+    // Handle double-tap gesture to spawn objects
+    @objc func handleDoubleTap(gesture: UITapGestureRecognizer) {
+        let location = gesture.location(in: gesture.view)
+        let sceneLocation = convertPoint(fromView: location)
+        
+        let newObject = SKSpriteNode(color: .red, size: CGSize(width: 50, height: 50))
+        newObject.position = sceneLocation
+        newObject.physicsBody = SKPhysicsBody(rectangleOf: newObject.size)
+        newObject.physicsBody?.isDynamic = true
+        addChild(newObject)
+        spawnedObjects.append(newObject)
+    }
+    
+    // Handle triple-tap gesture to remove nearest object
+    @objc func handleTripleTap(gesture: UITapGestureRecognizer) {
+        let location = gesture.location(in: gesture.view)
+        let sceneLocation = convertPoint(fromView: location)
+        
+        // Find the nearest spawned object
+        if let nearestObject = spawnedObjects.min(by: {
+            $0.position.distance(to: sceneLocation) < $1.position.distance(to: sceneLocation)
+        }) {
+            nearestObject.removeFromParent()
+            spawnedObjects.removeAll { $0 == nearestObject }
+        }
+    }
+    
+    func didBegin(_ contact: SKPhysicsContact) {
+        // Handle collisions (if needed)
+    }
+}
+
+extension CGPoint {
+    // Calculate the distance between two points
+    func distance(to point: CGPoint) -> CGFloat {
+        return sqrt(pow(self.x - point.x, 2) + pow(self.y - point.y, 2))
+    }
+}
+
+// Set the startscreen as the initial view
+let startScreen = StartScreen()
+PlaygroundPage.current.liveView = startScreen
